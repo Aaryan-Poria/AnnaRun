@@ -364,45 +364,139 @@ function App() {
       end_text = "Game Over";
     }
   };
-
   const moveEnemies = (p5) => {
     for (var i = 0; i < Enemies.length; i++) {
+      if (Enemies[i].state === 0) continue; // Skip inactive enemies
+
       var newx = Enemies[i].x;
       var newy = Enemies[i].y;
-      let dir = p5.int(p5.random(0, 1000)) % 4;
-      if (dir === 0) {
-        if (newx > -21 / 2) newx -= 1;
-      } else if (dir === 1) {
-        if (newx < 21 / 2) newx += 1;
-      } else if (dir === 2) {
-        if (newy > -11 / 2) newy -= 1;
-      } else if (dir === 3) {
-        if (newy < 6) newy += 1;
+      var possibleDirections = ["LEFT", "RIGHT", "UP", "DOWN"];
+      var preferredDirection = null;
+
+      var dx = pacman.x - newx;
+      var dy = pacman.y - newy;
+
+      // Determine the preferred direction based on the distance to Pacman
+      if (p5.abs(dx) > p5.abs(dy)) {
+        preferredDirection = dx > 0 ? "RIGHT" : "LEFT";
+      } else {
+        preferredDirection = dy > 0 ? "DOWN" : "UP";
       }
 
-      var flag = true;
-      for (var j = 0; j < Blocks.length; j++) {
-        var dis = distance(newx, newy, Blocks[j].x, Blocks[j].y);
-        if (dis < 1) {
-          flag = false;
+      // Try the preferred direction first
+      var nextMove = tryMovingEnemy(p5, newx, newy, preferredDirection);
+      if (nextMove.success) {
+        Enemies[i].x = nextMove.x;
+        Enemies[i].y = nextMove.y;
+      } else {
+        // If the preferred direction is blocked, try any other direction
+        possibleDirections.splice(
+          possibleDirections.indexOf(preferredDirection),
+          1
+        ); // Remove preferred direction from the options
+        for (var j = 0; j < possibleDirections.length; j++) {
+          nextMove = tryMovingEnemy(p5, newx, newy, possibleDirections[j]);
+          if (nextMove.success) {
+            Enemies[i].x = nextMove.x;
+            Enemies[i].y = nextMove.y;
+            break;
+          }
         }
       }
-      for (j = 0; j < Enemies.length; j++) {
-        dis = distance(newx, newy, Enemies[j].x, Enemies[j].y);
-        if (dis < 1 && i !== j) {
-          flag = false;
-        }
-      }
-      if (flag === true) {
-        Enemies[i].x = newx;
-        Enemies[i].y = newy;
-        dis = distance(newx, newy, pacman.x, pacman.y);
-        if (dis < 1) {
-          HandleEnePacCollision(p5, i);
-        }
+
+      // Check the collision between Pacman and the enemy
+      var dis = distance(Enemies[i].x, Enemies[i].y, pacman.x, pacman.y);
+      if (dis < 1) {
+        HandleEnePacCollision(p5, i);
       }
     }
   };
+
+  const tryMovingEnemy = (p5, x, y, direction) => {
+    var newx = x;
+    var newy = y;
+
+    switch (direction) {
+      case "LEFT":
+        newx -= 1;
+        break;
+      case "RIGHT":
+        newx += 1;
+        break;
+      case "UP":
+        newy -= 1;
+        break;
+      case "DOWN":
+        newy += 1;
+        break;
+      default:
+    }
+
+    // Check for collision with blocks and other enemies
+    var flag = isMoveValid(p5, newx, newy);
+    return {
+      success: flag,
+      x: newx,
+      y: newy,
+    };
+  };
+
+  const isMoveValid = (p5, newx, newy) => {
+    for (var i = 0; i < Blocks.length; i++) {
+      var dis = distance(newx, newy, Blocks[i].x, Blocks[i].y);
+      if (dis < 1) {
+        return false; // Collision with a block
+      }
+    }
+    for (var j = 0; j < Enemies.length; j++) {
+      dis = distance(newx, newy, Enemies[j].x, Enemies[j].y);
+      if (dis < 1) {
+        return false; // Collision with another enemy
+      }
+    }
+    return true;
+  };
+
+  // const moveEnemies = (p5) => {
+  //   for (var i = 0; i < Enemies.length; i++) {
+  //     var newx = Enemies[i].x;
+  //     var newy = Enemies[i].y;
+
+  //     var dx = pacman.x - newx;
+  //     var dy = pacman.y - newy;
+
+  //     // Determine whether to move in the x or y direction
+  //     if (p5.abs(dx) > p5.abs(dy)) {
+  //       // Move in the x direction
+  //       newx += Math.sign(dx);
+  //     } else {
+  //       // Move in the y direction
+  //       newy += Math.sign(dy);
+  //     }
+
+  //     var flag = true;
+  //     for (var j = 0; j < Blocks.length; j++) {
+  //       var dis = distance(newx, newy, Blocks[j].x, Blocks[j].y);
+  //       if (dis < 1) {
+  //         flag = false;
+  //       }
+  //     }
+  //     for (j = 0; j < Enemies.length; j++) {
+  //       dis = distance(newx, newy, Enemies[j].x, Enemies[j].y);
+  //       if (dis < 1 && i !== j) {
+  //         flag = false;
+  //       }
+  //     }
+  //     if (flag === true) {
+  //       Enemies[i].x = newx;
+  //       Enemies[i].y = newy;
+  //       dis = distance(newx, newy, pacman.x, pacman.y);
+  //       if (dis < 1) {
+  //         HandleEnePacCollision(p5, i);
+  //       }
+  //     }
+  //   }
+  // };
 
   const maze = (p5) => {
     Blocks = [];
